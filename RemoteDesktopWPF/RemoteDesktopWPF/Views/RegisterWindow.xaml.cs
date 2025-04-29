@@ -40,12 +40,16 @@ namespace RemoteDesktopWPF.Views
                 }
             };
 
-            var success = await userService.RegisterUserAsync(newUser);
+            var result = await userService.RegisterUserAsync(newUser);
 
-            if (success)
+            if (result.Success)
+            {
                 MessageBox.Show("Registration successful!");
+            }
             else
-                MessageBox.Show("Registration failed.");
+            {
+                MessageBox.Show(result.ErrorMessage ?? "Registration failed.", "Error", MessageBoxButton.OK , MessageBoxImage.Error);
+            }
         }
 
     }
