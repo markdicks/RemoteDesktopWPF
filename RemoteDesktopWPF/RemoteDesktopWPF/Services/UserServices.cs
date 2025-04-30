@@ -61,12 +61,19 @@ public class UserService
         var json = await response.Content.ReadAsStringAsync();
         return JsonConvert.DeserializeObject<UserDto>(json);
     }
+    
+    public async Task<UserDto> GetUserByUsernameAsync(string username)
+    {
+        var response = await ApiService.Client.GetAsync($"/api/Users/username/{username}");
+        var json = await response.Content.ReadAsStringAsync();
+        return JsonConvert.DeserializeObject<UserDto>(json);
+    }
 
-    public async Task<bool> UpdateUserAsync(long id, UpdateUserDto user)
+    public async Task<Result> UpdateUserAsync(long id, UpdateUserDto user)
     {
         var json = JsonConvert.SerializeObject(user);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await ApiService.Client.PutAsync($"/api/Users/{id}", content);
-        return response.IsSuccessStatusCode;
+        return new Result{Success = response.IsSuccessStatusCode, ErrorMessage = response.ReasonPhrase };
     }
 }
