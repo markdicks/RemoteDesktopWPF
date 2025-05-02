@@ -65,3 +65,6 @@ Mark Dicks - [markdicks03@gmail.com](mailto:markdicks03@gmail.com)
 - [.NET Documentation](https://docs.microsoft.com/en-us/dotnet/)
 - [Microsoft WPF Documentation](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/)
 - [ASP.NET Core Web API Docs](https://learn.microsoft.com/en-us/aspnet/core/web-api/)
+
+## Status
+![Alt](https://repobeats.axiom.co/api/embed/3eed8aeb1c02d2f98be27e1c55be034cafdcda0a.svg "Repobeats analytics image")
