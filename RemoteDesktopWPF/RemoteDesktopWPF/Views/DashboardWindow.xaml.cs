@@ -64,7 +64,6 @@ namespace RemoteDesktopWPF.Views
                 {
                     UserName = currentUser.Username,
                     Email = currentUser.Email,
-                    Password = "ignored",
                     UserProfile = new UserProfileDto
                     {
                         FirstName = currentUser.FirstName,
