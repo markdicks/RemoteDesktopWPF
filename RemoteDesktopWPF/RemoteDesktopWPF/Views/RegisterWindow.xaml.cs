@@ -19,9 +19,12 @@ namespace RemoteDesktopWPF.Views
     /// </summary>
     public partial class RegisterWindow : Window
     {
-        public RegisterWindow()
+        private Window _mainWindow;
+        public RegisterWindow(Window mainWindow)
         {
             InitializeComponent();
+            _mainWindow = mainWindow;
+            this.Closed += OnWindowClosed;
         }
         private async void Register_Click(object sender, RoutedEventArgs e)
         {
@@ -45,10 +48,27 @@ namespace RemoteDesktopWPF.Views
             if (result.Success)
             {
                 MessageBox.Show("Registration successful!");
+
+                var loginWindow = new LoginWindow(_mainWindow);
+                loginWindow.Show();
+                this.Close();
             }
             else
             {
                 MessageBox.Show(result.ErrorMessage ?? "Registration failed.", "Error", MessageBoxButton.OK , MessageBoxImage.Error);
+            }
+        }
+
+        private void Back_Click(object sender, RoutedEventArgs e)
+        {
+            _mainWindow.Show();
+            this.Close();
+        }
+        private void OnWindowClosed(object sender, EventArgs e)
+        {
+            if (Application.Current.Windows.Count == 0)
+            {
+                Application.Current.Shutdown();
             }
         }
 

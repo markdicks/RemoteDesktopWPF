@@ -23,6 +23,7 @@ namespace RemoteDesktopWPF.Views
         public DashboardWindow()
         {
             InitializeComponent();
+            this.Closed += OnWindowClosed;
             LoadConfig();
         }
 
@@ -86,6 +87,13 @@ namespace RemoteDesktopWPF.Views
             }
         }
 
+        private void OnWindowClosed(object sender, EventArgs e)
+        {
+            if (Application.Current.Windows.Count == 0)
+            {
+                Application.Current.Shutdown();
+            }
+        }
 
         private void LoadConfig()
         {

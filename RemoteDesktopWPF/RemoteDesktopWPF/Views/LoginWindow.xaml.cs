@@ -21,9 +21,12 @@ namespace RemoteDesktopWPF.Views
     /// </summary>
     public partial class LoginWindow : Window
     {
-        public LoginWindow()
+        private Window _mainWindow;
+        public LoginWindow(Window main)
         {
             InitializeComponent();
+            _mainWindow = main;
+            this.Closed += OnWindowClosed;
         }
         private async void Login_Click(object sender, RoutedEventArgs e)
         {
@@ -42,6 +45,7 @@ namespace RemoteDesktopWPF.Views
                 SaveUserToAppConfig(user);
                 MessageBox.Show($"Welcome {user.UserName}!");
 
+                _mainWindow.Close();
                 var dashboardWindow = new DashboardWindow();
                 dashboardWindow.Show();
                 this.Close();
@@ -49,6 +53,19 @@ namespace RemoteDesktopWPF.Views
             else
             {
                 MessageBox.Show("Login failed.");
+            }
+        }
+        private void Cancel_Click(object sender, RoutedEventArgs e)
+        {
+            _mainWindow.Show();
+            this.Close();
+        }
+
+        private void OnWindowClosed(object sender, EventArgs e)
+        {
+            if (Application.Current.Windows.Count == 0)
+            {
+                Application.Current.Shutdown();
             }
         }
 

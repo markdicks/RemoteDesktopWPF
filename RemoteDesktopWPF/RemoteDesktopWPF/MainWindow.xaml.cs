@@ -11,16 +11,16 @@ namespace RemoteDesktopWPF
 
         private void Login_Click(object sender, RoutedEventArgs e)
         {
-            var loginWindow = new Views.LoginWindow();
+            var loginWindow = new Views.LoginWindow(this);
             loginWindow.Show();
-            this.Close();
+            this.Hide();
         }
 
         private void Register_Click(object sender, RoutedEventArgs e)
         {
-            var registerWindow = new Views.RegisterWindow();
+            var registerWindow = new Views.RegisterWindow(this);
             registerWindow.Show();
-            this.Close();
+            this.Hide();
         }
     }
 }
