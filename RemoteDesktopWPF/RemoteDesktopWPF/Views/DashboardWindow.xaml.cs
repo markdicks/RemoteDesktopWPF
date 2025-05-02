@@ -189,7 +189,7 @@ namespace RemoteDesktopWPF.Views
 
             string timestampedMessage = $"{DateTime.Now:T} - {message}";
 
-            File.AppendAllText(logFilePath, $"{timestampedMessage}{Environment.NewLine}");
+            File.AppendAllText(logFilePath, $"{DateTime.Now:yyyyMMdd}:{timestampedMessage}{Environment.NewLine}");
 
             LogsBox.Items.Add(timestampedMessage);
             LogsBox.ScrollIntoView(LogsBox.Items[LogsBox.Items.Count - 1]);
