@@ -87,6 +87,21 @@ namespace RemoteDesktopWPF.Views
             }
         }
 
+        private void Logout_Click(object sender, RoutedEventArgs e)
+        {
+            CurrentUserManager.Instance.CurrentUsername = null;
+            CurrentUserManager.Instance.CurrentUserConfig = null;
+
+            var welcome = new MainWindow();
+            welcome.Show();
+
+            foreach (Window window in Application.Current.Windows)
+            {
+                if (window != welcome)
+                    window.Close();
+            }
+        }
+
         private void OnWindowClosed(object sender, EventArgs e)
         {
             if (Application.Current.Windows.Count == 0)
@@ -110,21 +125,22 @@ namespace RemoteDesktopWPF.Views
                     _config = new AppConfig();
                 }
 
-                var firstUser = _config.Users.FirstOrDefault().Value;
-                if (firstUser != null)
+
+                var cusrrentuser = _config.Users[CurrentUserManager.Instance.CurrentUsername];
+                if (cusrrentuser != null)
                 {
-                    UsernameBox.Text = firstUser.Username;
-                    EmailBox.Text = firstUser.Email;
-                    FirstNameBox.Text = firstUser.FirstName;
-                    LastNameBox.Text = firstUser.LastName;
-                    AddressBox.Text = firstUser.Address;
+                    UsernameBox.Text = cusrrentuser.Username;
+                    EmailBox.Text = cusrrentuser.Email;
+                    FirstNameBox.Text = cusrrentuser.FirstName;
+                    LastNameBox.Text = cusrrentuser.LastName;
+                    AddressBox.Text = cusrrentuser.Address;
 
-                    ResolutionComboBox.SelectedIndex = firstUser.IndexResolution;
-                    BitrateBox.Text = firstUser.Bitrate.ToString();
-                    FramerateBox.Text = firstUser.Framerate.ToString();
+                    ResolutionComboBox.SelectedIndex = cusrrentuser.IndexResolution;
+                    BitrateBox.Text = cusrrentuser.Bitrate.ToString();
+                    FramerateBox.Text = cusrrentuser.Framerate.ToString();
 
-                    HostToggle.IsChecked = firstUser.IsHosting;
-                    HostPasswordBox.Password = firstUser.HostPassword;
+                    HostToggle.IsChecked = cusrrentuser.IsHosting;
+                    HostPasswordBox.Password = cusrrentuser.HostPassword;
                 }
             }
             catch (Exception ex)
@@ -202,6 +218,7 @@ namespace RemoteDesktopWPF.Views
                 MessageBox.Show("Failed to compress log file: " + ex.Message);
             }
         }
+
     }
 
     public class AppConfig

@@ -4,118 +4,126 @@
         Title="Dashboard" Height="600" Width="900" ResizeMode="CanResize">
 
     <Grid Margin="10">
-        <TabControl>
+            <DockPanel>
+            <Border Background="#f3f3f3" DockPanel.Dock="Top" Height="40">
+                <Grid>
+                    <TextBlock Text="Dashboard" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <Button Content="Logout" Width="80" Height="25" Click="Logout_Click"
+                    HorizontalAlignment="Right" Margin="0,5,10,5"/>
+                </Grid>
+            </Border>
+            <TabControl>
+                <!-- Profile Tab -->
+                <TabItem Header="Profile">
+                    <ScrollViewer>
+                        <StackPanel Margin="30" VerticalAlignment="Top" HorizontalAlignment="Center">
+                            <TextBlock Text="User Profile" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
 
-            <!-- Profile Tab -->
-            <TabItem Header="Profile">
-                <ScrollViewer>
+                            <StackPanel Margin="0,0,0,20">
+                                <Label Content="Username"/>
+                                <TextBox Name="UsernameBox" Width="300"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,20">
+                                <Label Content="Email"/>
+                                <TextBox Name="EmailBox" Width="300"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,20">
+                                <Label Content="First Name"/>
+                                <TextBox Name="FirstNameBox" Width="300"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,20">
+                                <Label Content="Last Name"/>
+                                <TextBox Name="LastNameBox" Width="300"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,30">
+                                <Label Content="Address"/>
+                                <TextBox Name="AddressBox" Width="300"/>
+                            </StackPanel>
+
+                            <Button Name="SaveProfileButton" Content="Save Changes" Width="180" Height="35" Click="SaveProfileButton_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Connect Tab -->
+                <TabItem Header="Connect">
                     <StackPanel Margin="30" VerticalAlignment="Top" HorizontalAlignment="Center">
-                        <TextBlock Text="User Profile" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+                        <TextBlock Text="Connect to Remote Host" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
 
                         <StackPanel Margin="0,0,0,20">
-                            <Label Content="Username"/>
-                            <TextBox Name="UsernameBox" Width="300"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,0,20">
-                            <Label Content="Email"/>
-                            <TextBox Name="EmailBox" Width="300"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,0,20">
-                            <Label Content="First Name"/>
-                            <TextBox Name="FirstNameBox" Width="300"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,0,20">
-                            <Label Content="Last Name"/>
-                            <TextBox Name="LastNameBox" Width="300"/>
+                            <Label Content="Target IP Address"/>
+                            <TextBox Name="TargetIpBox" Width="300"/>
                         </StackPanel>
 
                         <StackPanel Margin="0,0,0,30">
-                            <Label Content="Address"/>
-                            <TextBox Name="AddressBox" Width="300"/>
+                            <Label Content="Password"/>
+                            <PasswordBox Name="TargetPasswordBox" Width="300"/>
                         </StackPanel>
 
-                        <Button Name="SaveProfileButton" Content="Save Changes" Width="180" Height="35" Click="SaveProfileButton_Click"/>
+                        <Button Name="ConnectButton" Content="Connect" Width="180" Height="35" Click="ConnectButton_Click"/>
                     </StackPanel>
-                </ScrollViewer>
-            </TabItem>
+                </TabItem>
 
-            <!-- Connect Tab -->
-            <TabItem Header="Connect">
-                <StackPanel Margin="30" VerticalAlignment="Top" HorizontalAlignment="Center">
-                    <TextBlock Text="Connect to Remote Host" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+                <!-- Video Settings Tab -->
+                <TabItem Header="Video Settings">
+                    <StackPanel Margin="30" VerticalAlignment="Top" HorizontalAlignment="Center">
+                        <TextBlock Text="Video Configuration" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
 
-                    <StackPanel Margin="0,0,0,20">
-                        <Label Content="Target IP Address"/>
-                        <TextBox Name="TargetIpBox" Width="300"/>
+                        <StackPanel Margin="0,0,0,20">
+                            <Label Content="Resolution"/>
+                            <ComboBox Name="ResolutionComboBox" Width="300">
+                                <ComboBoxItem Content="1920x1080"/>
+                                <ComboBoxItem Content="1280x720"/>
+                                <ComboBoxItem Content="854x480"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,20">
+                            <Label Content="Frame Rate (FPS)"/>
+                            <TextBox Name="FramerateBox" Width="300"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,20">
+                            <Label Content="Bitrate (kbps)"/>
+                            <TextBox Name="BitrateBox" Width="300"/>
+                        </StackPanel>
+
+                        <CheckBox Name="EnableHardwareEncoding" Content="Enable Hardware Encoding" Margin="0,0,0,30"/>
+
+                        <Button Content="Save Video Settings" Width="180" Height="35" Click="SaveConnectionSettings_Click"/>
                     </StackPanel>
+                </TabItem>
 
-                    <StackPanel Margin="0,0,0,30">
-                        <Label Content="Password"/>
-                        <PasswordBox Name="TargetPasswordBox" Width="300"/>
-                    </StackPanel>
+                <!-- Host Tab -->
+                <TabItem Header="Host">
+                    <StackPanel Margin="30" VerticalAlignment="Top" HorizontalAlignment="Center">
+                        <TextBlock Text="Host Configuration" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
 
-                    <Button Name="ConnectButton" Content="Connect" Width="180" Height="35" Click="ConnectButton_Click"/>
-                </StackPanel>
-            </TabItem>
-
-            <!-- Video Settings Tab -->
-            <TabItem Header="Video Settings">
-                <StackPanel Margin="30" VerticalAlignment="Top" HorizontalAlignment="Center">
-                    <TextBlock Text="Video Configuration" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
-
-                    <StackPanel Margin="0,0,0,20">
-                        <Label Content="Resolution"/>
-                        <ComboBox Name="ResolutionComboBox" Width="300">
-                            <ComboBoxItem Content="1920x1080"/>
-                            <ComboBoxItem Content="1280x720"/>
-                            <ComboBoxItem Content="854x480"/>
-                        </ComboBox>
-                    </StackPanel>
-
-                    <StackPanel Margin="0,0,0,20">
-                        <Label Content="Frame Rate (FPS)"/>
-                        <TextBox Name="FramerateBox" Width="300"/>
-                    </StackPanel>
-
-                    <StackPanel Margin="0,0,0,20">
-                        <Label Content="Bitrate (kbps)"/>
-                        <TextBox Name="BitrateBox" Width="300"/>
-                    </StackPanel>
-
-                    <CheckBox Name="EnableHardwareEncoding" Content="Enable Hardware Encoding" Margin="0,0,0,30"/>
-
-                    <Button Content="Save Video Settings" Width="180" Height="35" Click="SaveConnectionSettings_Click"/>
-                </StackPanel>
-            </TabItem>
-
-            <!-- Host Tab -->
-            <TabItem Header="Host">
-                <StackPanel Margin="30" VerticalAlignment="Top" HorizontalAlignment="Center">
-                    <TextBlock Text="Host Configuration" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
-
-                    <CheckBox Name="HostToggle" Content="Enable Hosting" Margin="0,0,0,20"
+                        <CheckBox Name="HostToggle" Content="Enable Hosting" Margin="0,0,0,20"
                               Checked="HostToggle_Checked" Unchecked="HostToggle_Unchecked"/>
 
-                    <StackPanel Margin="0,0,0,30">
-                        <Label Content="Access Password"/>
-                        <PasswordBox Name="HostPasswordBox" Width="300"/>
+                        <StackPanel Margin="0,0,0,30">
+                            <Label Content="Access Password"/>
+                            <PasswordBox Name="HostPasswordBox" Width="300"/>
+                        </StackPanel>
+
+                        <Button Content="Apply Host Settings" Width="180" Height="35" Click="SaveConnectionSettings_Click"/>
                     </StackPanel>
+                </TabItem>
 
-                    <Button Content="Apply Host Settings" Width="180" Height="35" Click="SaveConnectionSettings_Click"/>
-                </StackPanel>
-            </TabItem>
-
-            <!-- Logs Tab -->
-            <TabItem Header="Logs">
-                <StackPanel Margin="10">
-                    <TextBlock Text="Event Logs" FontSize="20" FontWeight="Bold" Margin="10"/>
-                    <ListBox Name="LogsBox" Margin="10" Height="400"/>
-                </StackPanel>
-            </TabItem>
+                <!-- Logs Tab -->
+                <TabItem Header="Logs">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Event Logs" FontSize="20" FontWeight="Bold" Margin="10"/>
+                        <ListBox Name="LogsBox" Margin="10" Height="370"/>
+                    </StackPanel>
+                </TabItem>
 
         </TabControl>
+        </DockPanel>
     </Grid>
 </Window>
