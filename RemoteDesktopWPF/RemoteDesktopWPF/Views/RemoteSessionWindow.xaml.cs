@@ -26,10 +26,24 @@ namespace RemoteDesktopWPF.Views
 
         private void Disconnect_Click(object sender, RoutedEventArgs e)
         {
-            _cts.Cancel();
-            _stream?.Close();
-            _client?.Close();
-            this.Close();
+            CloseSession();
+        }
+
+        private void CloseSession()
+        {
+            try
+            {
+                _cts?.Cancel();
+                _stream?.Close();
+                _client?.Close();
+            }
+            catch { /* swallow for now */ }
+
+            Dispatcher.Invoke(() =>
+            {
+                if (this.IsLoaded)
+                    this.Close();
+            });
         }
 
         private void ReceiveVideo(CancellationToken token)
@@ -38,35 +52,80 @@ namespace RemoteDesktopWPF.Views
             {
                 while (!token.IsCancellationRequested)
                 {
+                    // Detect socket disconnect
+                    if (!_client.Connected || !_stream.CanRead)
+                        throw new IOException("Disconnected from host.");
+
                     byte[] lengthBuffer = new byte[4];
-                    _stream.Read(lengthBuffer, 0, 4);
+                    int read = _stream.Read(lengthBuffer, 0, 4);
+                    if (read == 0)
+                        throw new IOException("Stream ended unexpectedly.");
+
                     int length = BitConverter.ToInt32(lengthBuffer, 0);
 
                     byte[] buffer = new byte[length];
                     int totalRead = 0;
                     while (totalRead < length)
-                        totalRead += _stream.Read(buffer, totalRead, length - totalRead);
+                    {
+                        int chunk = _stream.Read(buffer, totalRead, length - totalRead);
+                        if (chunk == 0)
+                            throw new IOException("Incomplete frame received.");
+                        totalRead += chunk;
+                    }
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        using (var ms = new MemoryStream(buffer))
+                        try
                         {
-                            var bitmap = new BitmapImage();
-                            bitmap.BeginInit();
-                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                            bitmap.StreamSource = ms;
-                            bitmap.EndInit();
-                            bitmap.Freeze();
-                            VideoDisplay.Source = bitmap;
+                            using (var ms = new MemoryStream(buffer))
+                            {
+                                var bitmap = new BitmapImage();
+                                bitmap.BeginInit();
+                                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                                bitmap.StreamSource = ms;
+                                bitmap.EndInit();
+                                bitmap.Freeze(); // Important for cross-thread
+                                VideoDisplay.Source = bitmap;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogError("Error decoding image: " + ex.Message);
                         }
                     });
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Image load error: " + ex.Message);
-                throw new Exception(ex.Message);
+                LogError("Disconnected or error receiving video: " + ex.Message);
+                PromptReconnect();
             }
         }
+
+        private void PromptReconnect()
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var result = MessageBox.Show("Connection lost. Reconnect?", "Disconnected", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    // TODO: Implement reconnect logic (e.g., store IP/Password and retry)
+                    MessageBox.Show("Reconnect not implemented yet.");
+                }
+                else
+                {
+                    CloseSession();
+                }
+            });
+        }
+
+        private void LogError(string message)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show(message, "Remote Session Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            });
+        }
     }
+
 }

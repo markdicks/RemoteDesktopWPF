@@ -41,7 +41,7 @@ namespace RemoteDesktopWPF.Views
 
         private async void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
-            string targetIp = TargetIpBox.Text.ToString().Trim();
+            string targetIp = TargetIpBox.Text.Trim();
             string connectionPassword = TargetPasswordBox.Password;
             Log("Connecting to host...");
 
@@ -51,23 +51,56 @@ namespace RemoteDesktopWPF.Views
                 return;
             }
 
-            int port = 49152;
+            const int port = 49152;
+            TcpClient client = new TcpClient();
 
             try
             {
-                TcpClient client = new TcpClient();
-                client.Connect(ipAddress, port);
+                var connectTask = client.ConnectAsync(ipAddress, port);
+                if (await Task.WhenAny(connectTask, Task.Delay(5000)) != connectTask)
+                {
+                    throw new TimeoutException("Connection timed out.");
+                }
+
                 NetworkStream stream = client.GetStream();
+
+                // Send password
                 byte[] passwordBytes = Encoding.UTF8.GetBytes(connectionPassword);
                 await stream.WriteAsync(passwordBytes, 0, passwordBytes.Length);
+
+                // Expect an authentication result (e.g., 1 byte: 1 = success, 0 = failure)
+                byte[] response = new byte[1];
+                int bytesRead = await stream.ReadAsync(response, 0, 1);
+                if (bytesRead == 0 || response[0] != 1)
+                {
+                    throw new UnauthorizedAccessException("Host rejected the connection (wrong password).");
+                }
+
+                // Launch remote session window
                 RemoteSessionWindow remoteSession = new RemoteSessionWindow(client);
                 remoteSession.Show();
 
                 Log("Connected to host.");
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                Log("Authentication failed: " + ex.Message);
+                client.Close();
+            }
+            catch (TimeoutException ex)
+            {
+                Log("Timeout: " + ex.Message);
+                client.Close();
+            }
+            catch (SocketException ex)
+            {
+                Log($"Socket error: {ex.Message}");
+                client.Close();
+            }
             catch (Exception ex)
             {
                 Log($"Connection failed: {ex.Message}");
+                client.Close();
             }
         }
 
@@ -247,8 +280,11 @@ namespace RemoteDesktopWPF.Views
 
             File.AppendAllText(logFilePath, $"{DateTime.Now:yyyyMMdd}:{timestampedMessage}{Environment.NewLine}");
 
-            LogsBox.Items.Add(timestampedMessage);
-            LogsBox.ScrollIntoView(LogsBox.Items[LogsBox.Items.Count - 1]);
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                LogsBox.Items.Add(timestampedMessage);
+                LogsBox.ScrollIntoView(LogsBox.Items[LogsBox.Items.Count - 1]);
+            });
 
             FileInfo logFile = new FileInfo(logFilePath);
             if (logFile.Length > 1024 * 1024)
@@ -327,6 +363,7 @@ namespace RemoteDesktopWPF.Views
 
                 if (receivedPassword == _hostPassword)
                 {
+                    stream.WriteByte(1); // success
                     Dispatcher.Invoke(() =>
                     {
                         Log("Client connected with valid password.");
@@ -335,13 +372,14 @@ namespace RemoteDesktopWPF.Views
                 }
                 else
                 {
-                    Dispatcher.Invoke(() => Log("Client provided invalid password."));
+                    stream.WriteByte(0); // failure
+                    Log("Client provided invalid password.");
                     client.Close();
                 }
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => Log("Error in HandleClient: " + ex.Message));
+                Log("Error in HandleClient: " + ex.Message);
                 client?.Close();
             }
         }
