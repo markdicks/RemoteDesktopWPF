@@ -10,6 +10,9 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Text;
 using System.Threading;
+using System.Drawing.Imaging;
+using System.Drawing;
+using System.Windows.Media;
 
 namespace RemoteDesktopWPF.Views
 {
@@ -36,7 +39,7 @@ namespace RemoteDesktopWPF.Views
             LoadConfig();
         }
 
-        private void ConnectButton_Click(object sender, RoutedEventArgs e)
+        private async void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             string targetIp = TargetIpBox.Text.ToString().Trim();
             string connectionPassword = TargetPasswordBox.Password;
@@ -54,12 +57,11 @@ namespace RemoteDesktopWPF.Views
             {
                 TcpClient client = new TcpClient();
                 client.Connect(ipAddress, port);
-
-                using (NetworkStream stream = client.GetStream())
-                {
-                    byte[] passwordBytes = Encoding.UTF8.GetBytes(connectionPassword);
-                    stream.Write(passwordBytes, 0, passwordBytes.Length);
-                }
+                NetworkStream stream = client.GetStream();
+                byte[] passwordBytes = Encoding.UTF8.GetBytes(connectionPassword);
+                await stream.WriteAsync(passwordBytes, 0, passwordBytes.Length);
+                RemoteSessionWindow remoteSession = new RemoteSessionWindow(client);
+                remoteSession.Show();
 
                 Log("Connected to host.");
             }
@@ -315,24 +317,100 @@ namespace RemoteDesktopWPF.Views
 
         private void HandleClient(TcpClient client)
         {
-            using (client)
-            using (NetworkStream stream = client.GetStream())
+            NetworkStream stream = null;
+            try
             {
+                stream = client.GetStream();
                 byte[] buffer = new byte[256];
                 int bytesRead = stream.Read(buffer, 0, buffer.Length);
                 string receivedPassword = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
                 if (receivedPassword == _hostPassword)
                 {
-                    Dispatcher.Invoke(() => {
+                    Dispatcher.Invoke(() =>
+                    {
                         Log("Client connected with valid password.");
-                        MessageBox.Show("Someone connected to your computer.");
+                        Task.Run(() => SendVideoToClient(client, CurrentUserManager.Instance.CurrentUserConfig));
                     });
                 }
                 else
                 {
                     Dispatcher.Invoke(() => Log("Client provided invalid password."));
+                    client.Close();
                 }
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => Log("Error in HandleClient: " + ex.Message));
+                client?.Close();
+            }
+        }
+
+        private void SendVideoToClient(TcpClient client, UserConfig config)
+        {
+            try
+            {
+                double dpiX = 1.0;
+                double dpiY = 1.0;
+
+                // SAFELY access DPI from the UI thread
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var dpiScale = VisualTreeHelper.GetDpi(Application.Current.MainWindow);
+                    dpiX = dpiScale.DpiScaleX;
+                    dpiY = dpiScale.DpiScaleY;
+                });
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        var stream = client.GetStream();
+                        int width = (int)(SystemParameters.PrimaryScreenWidth * dpiX);
+                        int height = (int)(SystemParameters.PrimaryScreenHeight * dpiY);
+                        var bounds = new System.Drawing.Rectangle(0, 0, width, height);
+
+                        var timer = new System.Timers.Timer(1000.0 / config.Framerate);
+                        timer.Elapsed += (s, e) =>
+                        {
+                            try
+                            {
+                                using (var bmp = new System.Drawing.Bitmap(width, height))
+                                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                                using (var ms = new MemoryStream())
+                                {
+                                    g.CopyFromScreen(0, 0, 0, 0, bounds.Size);
+                                    bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg); // Apply compression logic if needed
+
+                                    byte[] data = ms.ToArray();
+                                    byte[] lengthPrefix = BitConverter.GetBytes(data.Length);
+
+                                    stream.Write(lengthPrefix, 0, 4);
+                                    stream.Write(data, 0, data.Length);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Dispatcher.Invoke(() => Log("Streaming error: " + ex.Message));
+                            }
+                        };
+
+                        timer.Start();
+
+                        // Keep alive while connected
+                        while (client.Connected)
+                            Thread.Sleep(100);
+
+                        timer.Stop();
+                    }
+                    catch (Exception ex)
+                    {
+                        Dispatcher.Invoke(() => Log("Streaming error: " + ex.Message));
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => Log("Streaming error: " + ex.Message));
             }
         }
 
