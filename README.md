@@ -1,3 +1,5 @@
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+
 # RemoteDesktopWPF
 
 ## Overview
@@ -44,6 +46,17 @@ This WPF app relies on a local API for authentication and user profile managemen
 4. Log in with your credentials via the **Login** screen.
 5. Upon successful login, proceed to establish a remote connection to another host using IP address and password.
 6. Control and interact with the host machine in real-time.
+
+### Demo Account (Debug only)
+
+For quick local testing without running the companion TestAPI, a demo login is available in Debug builds only.
+
+- Run the WPF application using the Debug configuration in Visual Studio (set the solution configuration to "Debug").
+- On the Login screen enter username: `demo` and password: `demo` and click Login.
+- No server connection is performed for this account; the app creates a local demo user and proceeds to the dashboard.
+- Demo user details are persisted to the per-user app config at: `%AppData%\\RemoteDesktopWPF\\config.json`.
+
+Note: This behavior is compiled only into Debug builds and is not available in Release builds.
 
 ## Contributing
 
