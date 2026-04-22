@@ -3,8 +3,25 @@
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Remote Session" Height="600" Width="800">
     <Grid>
-        <Image Name="VideoDisplay" Stretch="Uniform"/>
-        <Button Content="Disconnect" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"
-                Click="Disconnect_Click"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Margin="10,10,10,0" Padding="10,6" CornerRadius="4" Background="#FFEAF4EA" BorderBrush="#FF4CAF50" BorderThickness="1">
+            <DockPanel>
+                <TextBlock x:Name="SessionStatusTextBlock"
+                           VerticalAlignment="Center"
+                           Foreground="#FF1B5E20"
+                           Text="Connected to remote session."
+                           TextTrimming="CharacterEllipsis"/>
+                <Button Content="Disconnect" Width="100" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="10,0,0,0"
+                        Click="Disconnect_Click"/>
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="1" Margin="10" Background="#FF101010" CornerRadius="4">
+            <Image Name="VideoDisplay" Stretch="Uniform"/>
+        </Border>
     </Grid>
 </Window>

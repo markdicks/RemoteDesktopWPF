@@ -4,12 +4,23 @@
         Title="Dashboard" Height="600" Width="900" ResizeMode="CanResize" WindowStartupLocation="CenterScreen">
 
     <Grid Margin="10">
-            <DockPanel>
-            <Border Background="#f3f3f3" DockPanel.Dock="Top" Height="40">
+        <DockPanel>
+            <Border Background="#f3f3f3" DockPanel.Dock="Top" Height="70">
                 <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="40"/>
+                        <RowDefinition Height="30"/>
+                    </Grid.RowDefinitions>
                     <TextBlock Text="Dashboard" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0"/>
                     <Button Content="Logout" Width="80" Height="25" Click="Logout_Click"
                     HorizontalAlignment="Right" Margin="0,5,10,5"/>
+                    <Border Grid.Row="1" Margin="10,0,10,5" CornerRadius="4" Background="#FFEAF4EA" BorderBrush="#FF4CAF50" BorderThickness="1">
+                        <TextBlock x:Name="StatusMessageTextBlock"
+                                   Margin="10,4"
+                                   Foreground="#FF1B5E20"
+                                   Text="Ready."
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Border>
                 </Grid>
             </Border>
             <TabControl>

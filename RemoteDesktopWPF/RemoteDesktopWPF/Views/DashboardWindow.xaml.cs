@@ -31,6 +31,7 @@ namespace RemoteDesktopWPF.Views
         private TcpListener _listener;
         private string _hostPassword = "";
         private CancellationTokenSource _listenerCancellationTokenSource;
+        private bool _isLoadingConfig;
 
         public DashboardWindow()
         {
@@ -43,16 +44,26 @@ namespace RemoteDesktopWPF.Views
         {
             string targetIp = TargetIpBox.Text.Trim();
             string connectionPassword = TargetPasswordBox.Password;
+            ShowInfo("Connecting to host...");
             Log("Connecting to host...");
+
+            if (string.IsNullOrWhiteSpace(targetIp))
+            {
+                ShowError("Enter a target IP address before connecting.");
+                Log("Connection failed: target IP address is required.");
+                return;
+            }
 
             if (!IPAddress.TryParse(targetIp, out IPAddress ipAddress))
             {
+                ShowError("Enter a valid IP address.");
                 Log("Invalid IP address format.");
                 return;
             }
 
             const int port = 49152;
             TcpClient client = new TcpClient();
+            ConnectButton.IsEnabled = false;
 
             try
             {
@@ -80,71 +91,128 @@ namespace RemoteDesktopWPF.Views
                 RemoteSessionWindow remoteSession = new RemoteSessionWindow(client);
                 remoteSession.Show();
 
+                ShowSuccess("Connected to host successfully.");
                 Log("Connected to host.");
             }
             catch (UnauthorizedAccessException ex)
             {
+                ShowError("Authentication failed. Check the password and try again.");
                 Log("Authentication failed: " + ex.Message);
-                client.Close();
+                TryCloseClient(client);
             }
             catch (TimeoutException ex)
             {
+                ShowError("The connection attempt timed out.");
                 Log("Timeout: " + ex.Message);
-                client.Close();
+                TryCloseClient(client);
             }
             catch (SocketException ex)
             {
+                ShowError("Unable to reach the host. Check the address and network connection.");
                 Log($"Socket error: {ex.Message}");
-                client.Close();
+                TryCloseClient(client);
             }
             catch (Exception ex)
             {
+                ShowError("Connection failed. Review the logs for more details.");
                 Log($"Connection failed: {ex.Message}");
-                client.Close();
+                TryCloseClient(client);
+            }
+            finally
+            {
+                ConnectButton.IsEnabled = true;
             }
         }
 
         private void HostToggle_Checked(object sender, RoutedEventArgs e)
         {
+            if (_isLoadingConfig)
+            {
+                return;
+            }
+
             _hostPassword = HostPasswordBox.Password;
-            string localIp = GetLocalIPAddress();
-            int port = 49152;
+
+            if (string.IsNullOrWhiteSpace(_hostPassword))
+            {
+                ShowError("Enter an access password before enabling hosting.");
+                Log("Failed to start hosting: access password is required.");
+                HostToggle.IsChecked = false;
+                return;
+            }
 
             try
             {
+                if (_listener != null)
+                {
+                    StopHosting();
+                }
+
+                string localIp = GetLocalIPAddress();
+                int port = 49152;
+
                 _listenerCancellationTokenSource = new CancellationTokenSource();
                 _listener = new TcpListener(IPAddress.Parse(localIp), port);
                 _listener.Start();
 
                 Task.Run(() => ListenForClients(_listenerCancellationTokenSource.Token));
-                SaveConfig();
+                if (!SaveConfig())
+                {
+                    StopHosting();
+                    HostToggle.IsChecked = false;
+                    return;
+                }
+
+                ShowSuccess($"Hosting enabled on {localIp}:{port}.");
                 Log($"Hosting enabled. IP: {localIp}:{port}");
             }
             catch (Exception ex)
             {
+                ShowError("Failed to start hosting. Review the logs for more details.");
                 Log($"Failed to start hosting: {ex.Message}");
+                StopHosting();
+                HostToggle.IsChecked = false;
             }
         }
 
         private void HostToggle_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (_isLoadingConfig)
+            {
+                return;
+            }
+
             StopHosting();
             SaveConfig();
+            ShowInfo("Hosting disabled.");
             Log("Hosting disabled.");
         }
 
         private void SaveConnectionSettings_Click(object sender, RoutedEventArgs e)
         {
-            SaveConfig();
-            Log("Connection settings saved.");
+            if (SaveConfig())
+            {
+                ShowSuccess("Settings saved successfully.");
+                Log("Connection settings saved.");
+            }
         }
 
         private async void SaveProfileButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                SaveConfig();
+                if (!SaveConfig())
+                {
+                    return;
+                }
+
                 var currentUser = CurrentUserManager.Instance.CurrentUserConfig;
+                if (currentUser == null)
+                {
+                    ShowError("No user is currently loaded.");
+                    Log("Failed to update profile: current user configuration is missing.");
+                    return;
+                }
 
                 var userId = currentUser.UserId;
 
@@ -164,12 +232,19 @@ namespace RemoteDesktopWPF.Views
                 var response = await userService.UpdateUserAsync(userId, userData);
 
                 if (response.Success)
+                {
+                    ShowSuccess("User profile updated successfully.");
                     Log("User profile updated.");
+                }
                 else
+                {
+                    ShowError("Failed to update profile.");
                     Log($"Failed to update profile: {response.ErrorMessage}");
+                }
             }
             catch (Exception ex)
             {
+                ShowError("An error occurred while updating the profile.");
                 Log("Error updating profile: " + ex.Message);
             }
         }
@@ -202,20 +277,37 @@ namespace RemoteDesktopWPF.Views
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
+                _isLoadingConfig = true;
+
+                string configDirectory = Path.GetDirectoryName(_configPath);
+                if (!string.IsNullOrWhiteSpace(configDirectory))
+                {
+                    Directory.CreateDirectory(configDirectory);
+                }
+
                 if (File.Exists(_configPath))
                 {
                     var json = File.ReadAllText(_configPath);
-                    _config = JsonSerializer.Deserialize<AppConfig>(json);
+                    _config = JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
                 }
                 else
                 {
                     _config = new AppConfig();
                 }
 
+                if (_config.Users == null)
+                {
+                    _config.Users = new Dictionary<string, UserConfig>();
+                }
 
-                var cusrrentuser = _config.Users[CurrentUserManager.Instance.CurrentUsername];
-                if (cusrrentuser != null)
+                string currentUsername = CurrentUserManager.Instance.CurrentUsername;
+                if (string.IsNullOrWhiteSpace(currentUsername))
+                {
+                    ShowInfo("No current user is loaded.");
+                    return;
+                }
+
+                if (_config.Users.TryGetValue(currentUsername, out var cusrrentuser) && cusrrentuser != null)
                 {
                     UsernameBox.Text = cusrrentuser.Username;
                     EmailBox.Text = cusrrentuser.Email;
@@ -229,30 +321,64 @@ namespace RemoteDesktopWPF.Views
 
                     HostToggle.IsChecked = cusrrentuser.IsHosting;
                     HostPasswordBox.Password = cusrrentuser.HostPassword;
+
+                    ShowSuccess("Configuration loaded successfully.");
+                }
+                else
+                {
+                    ShowInfo("No saved configuration was found for the current user.");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Failed to load config: " + ex.Message);
+                _config = new AppConfig();
+                ShowError("Failed to load configuration.");
+                Log("Failed to load config: " + ex.Message);
+            }
+            finally
+            {
+                _isLoadingConfig = false;
             }
         }
 
-        private void SaveConfig()
+        private bool SaveConfig()
         {
             try
             {
                 var currentUser = CurrentUserManager.Instance.CurrentUserConfig;
+                if (currentUser == null)
+                {
+                    ShowError("No current user is available to save settings.");
+                    return false;
+                }
+
+                if (!TryGetValidatedNumber(BitrateBox.Text, "bitrate", out int bitrate))
+                {
+                    return false;
+                }
+
+                if (!TryGetValidatedNumber(FramerateBox.Text, "frame rate", out int framerate))
+                {
+                    return false;
+                }
+
+                if (_config == null)
+                {
+                    _config = new AppConfig();
+                }
+
+                if (_config.Users == null)
+                {
+                    _config.Users = new Dictionary<string, UserConfig>();
+                }
+
                 currentUser.Username = UsernameBox.Text;
                 currentUser.Email = EmailBox.Text;
                 currentUser.FirstName = FirstNameBox.Text;
                 currentUser.LastName = LastNameBox.Text;
                 currentUser.Address = AddressBox.Text;
-
-                if (int.TryParse(BitrateBox.Text, out int bitrate))
-                    currentUser.Bitrate = bitrate;
-
-                if (int.TryParse(FramerateBox.Text, out int framerate))
-                    currentUser.Framerate = framerate;
+                currentUser.Bitrate = bitrate;
+                currentUser.Framerate = framerate;
 
                 currentUser.IndexResolution = ResolutionComboBox.SelectedIndex;
                 currentUser.IsHosting = HostToggle.IsChecked == true;
@@ -260,25 +386,27 @@ namespace RemoteDesktopWPF.Views
 
                 _config.Users[currentUser.Username] = currentUser;
 
+                string configDirectory = Path.GetDirectoryName(_configPath);
+                if (!string.IsNullOrWhiteSpace(configDirectory))
+                {
+                    Directory.CreateDirectory(configDirectory);
+                }
+
                 var json = JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_configPath, json);
+                return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Failed to save config: " + ex.Message);
+                ShowError("Failed to save configuration.");
+                Log("Failed to save config: " + ex.Message);
+                return false;
             }
         }
 
         private void Log(string message)
         {
-            var currentUser = CurrentUserManager.Instance.CurrentUserConfig;
-            string logFilePath = Path.Combine(_logDirPath, $"{currentUser.Username}_log.txt");
-
-            Directory.CreateDirectory(_logDirPath);
-
             string timestampedMessage = $"{DateTime.Now:T} - {message}";
-
-            File.AppendAllText(logFilePath, $"{DateTime.Now:yyyyMMdd}:{timestampedMessage}{Environment.NewLine}");
 
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -286,12 +414,26 @@ namespace RemoteDesktopWPF.Views
                 LogsBox.ScrollIntoView(LogsBox.Items[LogsBox.Items.Count - 1]);
             });
 
-            FileInfo logFile = new FileInfo(logFilePath);
-            if (logFile.Length > 1024 * 1024)
+            try
             {
-                string zipFilePath = Path.Combine(_logDirPath, $"{currentUser.Username}_log_{DateTime.Now:yyyyMMddHHmmss}.zip");
-                CompressLogFile(logFilePath, zipFilePath);
-                File.WriteAllText(logFilePath, string.Empty);
+                var currentUser = CurrentUserManager.Instance.CurrentUserConfig;
+                string username = string.IsNullOrWhiteSpace(currentUser?.Username) ? "application" : currentUser.Username;
+                string logFilePath = Path.Combine(_logDirPath, $"{username}_log.txt");
+
+                Directory.CreateDirectory(_logDirPath);
+                File.AppendAllText(logFilePath, $"{DateTime.Now:yyyyMMdd}:{timestampedMessage}{Environment.NewLine}");
+
+                FileInfo logFile = new FileInfo(logFilePath);
+                if (logFile.Exists && logFile.Length > 1024 * 1024)
+                {
+                    string zipFilePath = Path.Combine(_logDirPath, $"{username}_log_{DateTime.Now:yyyyMMddHHmmss}.zip");
+                    CompressLogFile(logFilePath, zipFilePath);
+                    File.WriteAllText(logFilePath, string.Empty);
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatusMessage($"Unable to write to the log file: {ex.Message}", false, false);
             }
         }
 
@@ -306,7 +448,68 @@ namespace RemoteDesktopWPF.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Failed to compress log file: " + ex.Message);
+                SetStatusMessage("Failed to archive the log file.", false, false);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    LogsBox.Items.Add($"{DateTime.Now:T} - Failed to compress log file: {ex.Message}");
+                });
+            }
+        }
+
+        private void SetStatusMessage(string message, bool isSuccess, bool logMessage)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                StatusMessageTextBlock.Text = message;
+                StatusMessageTextBlock.Foreground = isSuccess ? System.Windows.Media.Brushes.DarkGreen : System.Windows.Media.Brushes.DarkRed;
+            });
+
+            if (logMessage)
+            {
+                Log(message);
+            }
+        }
+
+        private void ShowSuccess(string message)
+        {
+            SetStatusMessage(message, true, false);
+        }
+
+        private void ShowError(string message)
+        {
+            SetStatusMessage(message, false, false);
+        }
+
+        private void ShowInfo(string message)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                StatusMessageTextBlock.Text = message;
+                StatusMessageTextBlock.Foreground = System.Windows.Media.Brushes.DarkGoldenrod;
+            });
+        }
+
+        private bool TryGetValidatedNumber(string value, string fieldName, out int parsedValue)
+        {
+            if (!int.TryParse(value, out parsedValue) || parsedValue <= 0)
+            {
+                ShowError($"Enter a valid {fieldName} greater than zero.");
+                Log($"Failed to save config: invalid {fieldName} value '{value}'.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private void TryCloseClient(TcpClient client)
+        {
+            try
+            {
+                client?.Close();
+            }
+            catch (Exception ex)
+            {
+                Log("Failed to close client: " + ex.Message);
             }
         }
 
