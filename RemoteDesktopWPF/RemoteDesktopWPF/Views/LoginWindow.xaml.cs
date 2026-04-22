@@ -30,17 +30,49 @@ namespace RemoteDesktopWPF.Views
         }
         private async void Login_Click(object sender, RoutedEventArgs e)
         {
-            var userService = new UserService();
             var username = UsernameBox.Text.ToString();
+            var password = PasswordBox.Password;
+
             if (username == null || username == "")
             {
                 MessageBox.Show("Invalid username");
                 return;
             }
 
+#if DEBUG
+            if (string.Equals(username, "demo", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(password, "demo", StringComparison.Ordinal))
+            {
+                var demoUser = new UserDto
+                {
+                    Id = 0,
+                    UserName = "demo",
+                    Password = "demo",
+                    Email = "demo@local.debug",
+                    UserProfile = new UserProfileDto
+                    {
+                        FirstName = "Demo",
+                        LastName = "User",
+                        Address = "Debug Mode"
+                    }
+                };
+
+                SaveUserToAppConfig(demoUser);
+                MessageBox.Show($"Welcome {demoUser.UserName}!");
+
+                _mainWindow.Close();
+                var debugDashboardWindow = new DashboardWindow();
+                debugDashboardWindow.Show();
+                this.Close();
+                return;
+            }
+#endif
+
+            var userService = new UserService();
+
             var user = await userService.GetUserByUsernameAsync(username);
 
-            if (user != null && user.Password == PasswordBox.Password)
+            if (user != null && user.Password == password)
             {
                 SaveUserToAppConfig(user);
                 MessageBox.Show($"Welcome {user.UserName}!");
